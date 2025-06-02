@@ -2,10 +2,10 @@
 session_start();
 require_once 'config/database.php';
 
-// Check if user is already logged in
+// If user is already logged in, redirect to appropriate dashboard
 if (isset($_SESSION['user_id'])) {
     if ($_SESSION['role'] === 'admin') {
-        header('Location: dashboard.php');
+        header('Location: admin/dashboard.php');
     } else {
         header('Location: technician/dashboard.php');
     }
@@ -199,7 +199,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="login-container">
         <div class="login-card">
             <div class="login-header">
-                <i class="fas fa-tools"></i>
+                <div class="logo-circle">
+                    <img src="images/logo.png" alt="Logo" class="logo-image">
+                </div>
                 <h2>Job Order System</h2>
                 <p class="text-muted">Please login to continue</p>
             </div>

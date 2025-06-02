@@ -24,10 +24,10 @@ try {
         ORDER BY jo.completed_at DESC
     ");
     $stmt->execute([$_SESSION['user_id']]);
-    $completedOrders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
-    die("Database error: " . $e->getMessage());
+    $_SESSION['error'] = "Database error: " . $e->getMessage();
 }
 ?>
 <!DOCTYPE html>
@@ -35,13 +35,15 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Archived Orders - Job Order System</title>
+    <title>Completed Orders - Job Order System</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Custom CSS -->
     <link rel="stylesheet" href="../css/style.css">
     <style>
@@ -140,79 +142,60 @@ try {
             </nav>
 
             <div class="container-fluid">
-                <!-- Header -->
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h4 class="mb-0">Archived Orders</h4>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-outline-primary" onclick="window.print()">
-                            <i class="fas fa-print me-2"></i>Print
-                        </button>
-                        <button type="button" class="btn btn-outline-primary">
-                            <i class="fas fa-file-export me-2"></i>Export
-                        </button>
-                    </div>
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Completed Orders</h1>
                 </div>
 
-                <!-- Orders Table -->
+                <?php if (isset($_SESSION['error'])): ?>
+                    <div class="alert alert-danger">
+                        <?= $_SESSION['error'] ?>
+                        <?php unset($_SESSION['error']); ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (isset($_SESSION['success'])): ?>
+                    <div class="alert alert-success">
+                        <?= $_SESSION['success'] ?>
+                        <?php unset($_SESSION['success']); ?>
+                    </div>
+                <?php endif; ?>
+
                 <div class="card">
                     <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Order #</th>
-                                        <th>Customer</th>
-                                        <th>Service Type</th>
-                                        <th>Model</th>
-                                        <th>Completed Date</th>
-                                        <th>Price</th>
-                                        <th class="text-center">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($completedOrders as $order): ?>
-                                    <tr>
-                                        <td>
-                                            <span class="fw-semibold"><?= htmlspecialchars($order['job_order_number']) ?></span>
-                                        </td>
-                                        <td>
-                                            <div class="fw-medium"><?= htmlspecialchars($order['customer_name']) ?></div>
-                                            <small class="text-muted d-block"><?= htmlspecialchars($order['customer_phone']) ?></small>
-                                            <small class="text-muted d-block text-truncate" style="max-width: 200px;"><?= htmlspecialchars($order['customer_address']) ?></small>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-info bg-opacity-10 text-info">
-                                                <?= ucfirst(htmlspecialchars($order['service_type'])) ?>
-                                            </span>
-                                        </td>
-                                        <td><?= htmlspecialchars($order['model_name']) ?></td>
-                                        <td>
-                                            <div class="fw-medium"><?= date('M d, Y', strtotime($order['completed_at'])) ?></div>
-                                        </td>
-                                        <td>
-                                            <div class="fw-semibold">₱<?= number_format($order['price'], 2) ?></div>
-                                        </td>
-                                        <td>
-                                            <div class="d-flex justify-content-center gap-2">
-                                                <a href="view-order.php?id=<?= $order['id'] ?>" 
-                                                   class="btn btn-sm btn-light" 
-                                                   data-bs-toggle="tooltip" 
-                                                   title="View Details">
-                                                    <i class="fas fa-eye text-primary"></i>
-                                                </a>
-                                                <button type="button" 
-                                                        class="btn btn-sm btn-light" 
-                                                        data-bs-toggle="tooltip" 
-                                                        title="Print Receipt">
-                                                    <i class="fas fa-receipt text-success"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
+                        <?php if (empty($orders)): ?>
+                            <p class="text-muted">No completed orders found.</p>
+                        <?php else: ?>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Order ID</th>
+                                            <th>Customer</th>
+                                            <th>Service Type</th>
+                                            <th>Aircon Model</th>
+                                            <th>Completed Date</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($orders as $order): ?>
+                                            <tr>
+                                                <td>#<?= $order['id'] ?></td>
+                                                <td><?= htmlspecialchars($order['customer_name']) ?></td>
+                                                <td><?= htmlspecialchars($order['service_type']) ?></td>
+                                                <td><?= htmlspecialchars($order['model_name']) ?></td>
+                                                <td><?= date('M d, Y', strtotime($order['completed_at'])) ?></td>
+                                                <td>
+                                                    <a href="view-order.php?id=<?= $order['id'] ?>" class="btn btn-sm btn-primary">
+                                                        <i class="fas fa-eye"></i> View
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -223,12 +206,5 @@ try {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Custom JS -->
     <script src="../js/dashboard.js"></script>
-    <script>
-        // Initialize tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
-        })
-    </script>
 </body>
 </html> 
