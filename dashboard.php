@@ -97,15 +97,30 @@ try {
             overflow: hidden;
             text-overflow: ellipsis;
         }
+        .sidebar-logo-glow {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .sidebar-logo-img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            box-shadow: 0 0 16px 4px #2196f3, 0 0 32px 8px #1a237e33;
+            border: 3px solid #fff;
+            background: #fff;
+            object-fit: cover;
+        }
     </style>
 </head>
 <body>
     <div class="wrapper">
         <!-- Sidebar -->
         <nav id="sidebar" class="text-white">
-            <div class="sidebar-header">
-                <h3><i class="fas fa-tools me-2"></i>Job Order System</h3>
-            </div>
+           <div class="sidebar-header">
+    <div class="sidebar-logo-glow mb-2">
+        <img src="images/logo.png" alt="Logo" class="sidebar-logo-img">
+    </div>
 
             <ul class="list-unstyled components">
                 <li class="active">
@@ -498,4 +513,4 @@ try {
         })
     </script>
 </body>
-</html> 
+</html>
