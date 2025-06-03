@@ -97,6 +97,38 @@ try {
             overflow: hidden;
             text-overflow: ellipsis;
         }
+        /* New responsive styles */
+        .card {
+            height: 100%;
+            margin-bottom: 1rem;
+        }
+        .card-body {
+            padding: 1.25rem;
+        }
+        .chart-container {
+            position: relative;
+            height: 250px;
+            width: 100%;
+        }
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 200px;
+            }
+            .card-body {
+                padding: 1rem;
+            }
+            .card-title {
+                font-size: 1rem;
+            }
+            .card-text h2 {
+                font-size: 1.5rem;
+            }
+        }
+        @media (max-width: 576px) {
+            .chart-container {
+                height: 180px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -135,26 +167,10 @@ try {
                     </ul>
                 </li>
                 <li>
-                    <a href="#techniciansSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                    <a href="technicians.php">
                         <i class="fas fa-users-cog"></i>
                         Technicians
                     </a>
-                    <ul class="collapse list-unstyled" id="techniciansSubmenu">
-                        <li>
-                            <a href="technicians.php">
-                                <i class="fas fa-list"></i>
-                                All Technicians
-                            </a>
-                        </li>
-                        <?php foreach ($technicians as $tech): ?>
-                        <li>
-                            <a href="technician-orders.php?id=<?= $tech['id'] ?>" class="technician-item">
-                                <img src="https://ui-avatars.com/api/?name=<?= urlencode($tech['name']) ?>&background=1a237e&color=fff" alt="<?= htmlspecialchars($tech['name']) ?>">
-                                <span class="name"><?= htmlspecialchars($tech['name']) ?></span>
-                            </a>
-                        </li>
-                        <?php endforeach; ?>
-                    </ul>
                 </li>
                 <li>
                     <a href="reports.php">
@@ -211,8 +227,8 @@ try {
                 <?php unset($_SESSION['error_message']); endif; ?>
 
                 <!-- Dashboard Cards -->
-                <div class="row mb-4">
-                    <div class="col-md-3">
+                <div class="row g-3 mb-4">
+                    <div class="col-12 col-sm-6 col-md-3">
                         <div class="card total-orders">
                             <div class="card-body text-white">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -224,7 +240,7 @@ try {
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-12 col-sm-6 col-md-3">
                         <div class="card completed-orders">
                             <div class="card-body text-white">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -236,7 +252,7 @@ try {
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-12 col-sm-6 col-md-3">
                         <div class="card in-progress-orders">
                             <div class="card-body text-white">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -248,7 +264,7 @@ try {
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-12 col-sm-6 col-md-3">
                         <div class="card pending-orders">
                             <div class="card-body text-white">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -263,8 +279,8 @@ try {
                 </div>
 
                 <!-- Charts -->
-                <div class="row">
-                    <div class="col-md-6">
+                <div class="row g-3">
+                    <div class="col-12 col-lg-6">
                         <div class="card">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -274,13 +290,13 @@ try {
                                         <button type="button" class="btn btn-sm btn-outline-primary">Weekly</button>
                                     </div>
                                 </div>
-                                <div style="height: 300px;">
+                                <div class="chart-container">
                                     <canvas id="ordersChart"></canvas>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-12 col-lg-6">
                         <div class="card">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -296,195 +312,13 @@ try {
                                         </ul>
                                     </div>
                                 </div>
-                                <div style="height: 300px;">
+                                <div class="chart-container">
                                     <canvas id="technicianChart"></canvas>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Recent Orders -->
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header bg-white">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <h5 class="mb-0">Recent Job Orders</h5>
-                                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addJobOrderModal">
-                                        <i class="fas fa-plus me-2"></i>Add Job Order
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-hover align-middle">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Order ID</th>
-                                                <th>Customer</th>
-                                                <th>Service</th>
-                                                <th>Technician</th>
-                                                <th>Status</th>
-                                                <th>Date</th>
-                                                <th class="text-center">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($recent_orders as $order): ?>
-                                            <tr>
-                                                <td>#<?= $order['id'] ?></td>
-                                                <td>
-                                                    <div>
-                                                        <h6 class="mb-0"><?= htmlspecialchars($order['customer_name']) ?></h6>
-                                                        <small class="text-muted"><?= htmlspecialchars($order['customer_phone']) ?></small>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div>
-                                                        <h6 class="mb-0"><?= htmlspecialchars($order['service_type']) ?></h6>
-                                                        <small class="text-muted"><?= htmlspecialchars($order['aircon_model']) ?></small>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <?php if ($order['technician_name']): ?>
-                                                    <div class="d-flex align-items-center">
-                                                        <img src="https://ui-avatars.com/api/?name=<?= urlencode($order['technician_name']) ?>&background=1a237e&color=fff" 
-                                                             alt="<?= htmlspecialchars($order['technician_name']) ?>" 
-                                                             class="rounded-circle me-2" width="32" height="32">
-                                                        <span><?= htmlspecialchars($order['technician_name']) ?></span>
-                                                    </div>
-                                                    <?php else: ?>
-                                                    <span class="text-muted">Unassigned</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td>
-                                                    <?php
-                                                    $status_class = [
-                                                        'pending' => 'warning',
-                                                        'in_progress' => 'primary',
-                                                        'completed' => 'success'
-                                                    ][$order['status']] ?? 'secondary';
-                                                    ?>
-                                                    <span class="badge bg-<?= $status_class ?> bg-opacity-10 text-<?= $status_class ?>">
-                                                        <?= ucfirst(str_replace('_', ' ', $order['status'])) ?>
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex flex-column">
-                                                        <span><?= date('M d, Y', strtotime($order['created_at'])) ?></span>
-                                                        <small class="text-muted"><?= date('h:i A', strtotime($order['created_at'])) ?></small>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex justify-content-center gap-2">
-                                                        <a href="view_order.php?id=<?= $order['id'] ?>" 
-                                                           class="btn btn-sm btn-light" 
-                                                           data-bs-toggle="tooltip" 
-                                                           title="View Details">
-                                                            <i class="fas fa-eye text-primary"></i>
-                                                        </a>
-                                                        <button type="button" 
-                                                                class="btn btn-sm btn-light" 
-                                                                data-bs-toggle="tooltip" 
-                                                                title="Edit Order">
-                                                            <i class="fas fa-edit text-warning"></i>
-                                                        </button>
-                                                        <button type="button" 
-                                                                class="btn btn-sm btn-light" 
-                                                                data-bs-toggle="tooltip" 
-                                                                title="Delete Order">
-                                                            <i class="fas fa-trash text-danger"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Add Job Order Modal -->
-    <div class="modal fade" id="addJobOrderModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Add New Job Order</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="addJobOrderForm" action="add_job_order.php" method="POST">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Customer Name</label>
-                                <input type="text" class="form-control" name="customer_name" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Phone Number</label>
-                                <input type="tel" class="form-control" name="customer_phone" required>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Address</label>
-                            <textarea class="form-control" name="customer_address" rows="2" required></textarea>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Aircon Model</label>
-                                <input type="text" class="form-control" name="aircon_model" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Aircon Type</label>
-                                <select class="form-select" name="aircon_type" required>
-                                    <option value="">Select Type</option>
-                                    <option value="Split Type">Split Type</option>
-                                    <option value="Window Type">Window Type</option>
-                                    <option value="Floor Standing">Floor Standing</option>
-                                    <option value="Ceiling Type">Ceiling Type</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Service Type</label>
-                                <select class="form-select" name="service_type" required>
-                                    <option value="">Select Service</option>
-                                    <option value="Installation">Installation</option>
-                                    <option value="Repair">Repair</option>
-                                    <option value="Maintenance">Maintenance</option>
-                                    <option value="Cleaning">Cleaning</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Assign Technician</label>
-                                <select class="form-select" name="technician_id" required>
-                                    <option value="">Select Technician</option>
-                                    <?php foreach ($technicians as $tech): ?>
-                                    <option value="<?= $tech['id'] ?>"><?= htmlspecialchars($tech['name']) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Notes</label>
-                            <textarea class="form-control" name="notes" rows="3"></textarea>
-                        </div>
-                        <div class="modal-footer px-0 pb-0">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Add Job Order</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
