@@ -27,17 +27,45 @@ try {
     $stmt = $pdo->query("SELECT id, name FROM technicians ORDER BY name ASC");
     $technicians = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Get recent job orders
+    // Get monthly statistics for the chart
     $stmt = $pdo->query("
         SELECT 
-            jo.*,
-            t.name as technician_name
-        FROM job_orders jo
-        LEFT JOIN technicians t ON jo.assigned_technician_id = t.id
-        ORDER BY jo.created_at DESC
+            DATE_FORMAT(created_at, '%Y-%m') as month,
+            COUNT(*) as total_orders,
+            SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_orders,
+            SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_orders,
+            SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_orders,
+            AVG(CASE 
+                WHEN status = 'completed' 
+                THEN TIMESTAMPDIFF(HOUR, created_at, completed_at)
+                ELSE NULL 
+            END) as avg_completion_time
+        FROM job_orders 
+        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+        GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+        ORDER BY month ASC
+    ");
+    $monthlyStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Get technician performance statistics
+    $stmt = $pdo->query("
+        SELECT 
+            t.name as technician_name,
+            COUNT(jo.id) as total_orders,
+            SUM(CASE WHEN jo.status = 'completed' THEN 1 ELSE 0 END) as completed_orders,
+            AVG(CASE 
+                WHEN jo.status = 'completed' 
+                THEN TIMESTAMPDIFF(HOUR, jo.created_at, jo.completed_at)
+                ELSE NULL 
+            END) as avg_completion_time
+        FROM technicians t
+        LEFT JOIN job_orders jo ON t.id = jo.assigned_technician_id
+        WHERE jo.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        GROUP BY t.id, t.name
+        ORDER BY completed_orders DESC
         LIMIT 5
     ");
-    $recent_orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $technicianStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
     die("Database error: " . $e->getMessage());
@@ -136,7 +164,9 @@ try {
         <!-- Sidebar -->
         <nav id="sidebar" class="text-white">
             <div class="sidebar-header">
-                <h3><i class="fas fa-tools me-2"></i>Job Order System</h3>
+                <div class="text-center mb-3">
+                    <img src="images/logo.png" alt="Logo" style="width: 70px; height: 70px; margin-bottom: 10px; border-radius: 50%; border: 2px solid #4A90E2; box-shadow: 0 0 10px rgba(74, 144, 226, 0.5); display: block; margin-left: auto; margin-right: auto;">
+                </div>
             </div>
 
             <ul class="list-unstyled components">
@@ -330,6 +360,160 @@ try {
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl)
         })
+
+        // Common chart options
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20
+                    }
+                }
+            }
+        };
+
+        // Orders Overview Chart
+        const ordersCtx = document.getElementById('ordersChart').getContext('2d');
+        const monthlyData = <?= json_encode($monthlyStats) ?>;
+        
+        new Chart(ordersCtx, {
+            type: 'line',
+            data: {
+                labels: monthlyData.map(item => {
+                    const date = new Date(item.month + '-01');
+                    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                }),
+                datasets: [{
+                    label: 'Total Orders',
+                    data: monthlyData.map(item => item.total_orders),
+                    borderColor: '#1a237e',
+                    backgroundColor: 'rgba(26, 35, 126, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 2,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#1a237e',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }, {
+                    label: 'Completed',
+                    data: monthlyData.map(item => item.completed_orders),
+                    borderColor: '#4caf50',
+                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 2,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#4caf50',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }, {
+                    label: 'In Progress',
+                    data: monthlyData.map(item => item.in_progress_orders),
+                    borderColor: '#2196f3',
+                    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 2,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#2196f3',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }, {
+                    label: 'Pending',
+                    data: monthlyData.map(item => item.pending_orders),
+                    borderColor: '#ff9800',
+                    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 2,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#ff9800',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                ...commonOptions,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            drawBorder: false,
+                            color: 'rgba(0, 0, 0, 0.03)'
+                        },
+                        ticks: {
+                            padding: 10,
+                            stepSize: 1
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            padding: 10
+                        }
+                    }
+                }
+            }
+        });
+
+        // Technician Performance Chart
+        const techCtx = document.getElementById('technicianChart').getContext('2d');
+        const techData = <?= json_encode($technicianStats) ?>;
+        
+        new Chart(techCtx, {
+            type: 'bar',
+            data: {
+                labels: techData.map(item => item.technician_name),
+                datasets: [{
+                    label: 'Total Orders',
+                    data: techData.map(item => item.total_orders),
+                    backgroundColor: 'rgba(26, 35, 126, 0.7)',
+                    borderColor: '#1a237e',
+                    borderWidth: 1
+                }, {
+                    label: 'Completed',
+                    data: techData.map(item => item.completed_orders),
+                    backgroundColor: 'rgba(76, 175, 80, 0.7)',
+                    borderColor: '#4caf50',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                ...commonOptions,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            drawBorder: false,
+                            color: 'rgba(0, 0, 0, 0.03)'
+                        },
+                        ticks: {
+                            padding: 10,
+                            stepSize: 1
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            padding: 10
+                        }
+                    }
+                }
+            }
+        });
     </script>
 </body>
 </html> 

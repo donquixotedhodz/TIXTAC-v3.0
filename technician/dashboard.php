@@ -58,7 +58,14 @@ try {
         SELECT 
             DATE_FORMAT(created_at, '%Y-%m') as month,
             COUNT(*) as total_orders,
-            SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_orders
+            SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_orders,
+            SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_orders,
+            SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_orders,
+            AVG(CASE 
+                WHEN status = 'completed' 
+                THEN TIMESTAMPDIFF(HOUR, created_at, completed_at)
+                ELSE NULL 
+            END) as avg_completion_time
         FROM job_orders 
         WHERE assigned_technician_id = ?
         AND created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
@@ -67,6 +74,19 @@ try {
     ");
     $stmt->execute([$_SESSION['user_id']]);
     $monthlyStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Get service type statistics
+    $stmt = $pdo->prepare("
+        SELECT 
+            service_type,
+            COUNT(*) as total,
+            SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
+        FROM job_orders 
+        WHERE assigned_technician_id = ?
+        GROUP BY service_type
+    ");
+    $stmt->execute([$_SESSION['user_id']]);
+    $serviceStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
     die("Database error: " . $e->getMessage());
@@ -188,8 +208,8 @@ try {
 
             <div class="container-fluid">
                 <!-- Dashboard Cards -->
-                <div class="row mb-4">
-                    <div class="col-md-3">
+                <div class="row g-3 mb-4">
+                    <div class="col-12 col-sm-6 col-md-3">
                         <div class="card total-orders">
                             <div class="card-body text-white">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -201,7 +221,7 @@ try {
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-12 col-sm-6 col-md-3">
                         <div class="card completed-orders">
                             <div class="card-body text-white">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -213,7 +233,7 @@ try {
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-12 col-sm-6 col-md-3">
                         <div class="card in-progress-orders">
                             <div class="card-body text-white">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -225,7 +245,7 @@ try {
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-12 col-sm-6 col-md-3">
                         <div class="card pending-orders">
                             <div class="card-body text-white">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -239,11 +259,45 @@ try {
                     </div>
                 </div>
 
-                <!-- Job Orders Chart -->
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title mb-4">Job Orders Overview</h5>
-                        <canvas id="jobOrdersChart" height="300"></canvas>
+                <!-- Charts -->
+                <div class="row g-3">
+                    <div class="col-12 col-lg-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-4">
+                                    <h5 class="card-title mb-0">Orders Overview</h5>
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-sm btn-outline-primary active">Monthly</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary">Weekly</button>
+                                    </div>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="ordersChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-4">
+                                    <h5 class="card-title mb-0">Service Performance</h5>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            Last 30 Days
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="#">Last 7 Days</a></li>
+                                            <li><a class="dropdown-item" href="#">Last 30 Days</a></li>
+                                            <li><a class="dropdown-item" href="#">Last 90 Days</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="serviceChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -261,11 +315,26 @@ try {
             return new bootstrap.Tooltip(tooltipTriggerEl)
         })
 
-        // Job Orders Chart
-        const ctx = document.getElementById('jobOrdersChart').getContext('2d');
+        // Common chart options
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20
+                    }
+                }
+            }
+        };
+
+        // Orders Overview Chart
+        const ordersCtx = document.getElementById('ordersChart').getContext('2d');
         const monthlyData = <?= json_encode($monthlyStats) ?>;
         
-        new Chart(ctx, {
+        new Chart(ordersCtx, {
             type: 'line',
             data: {
                 labels: monthlyData.map(item => {
@@ -278,31 +347,122 @@ try {
                     borderColor: '#1a237e',
                     backgroundColor: 'rgba(26, 35, 126, 0.1)',
                     tension: 0.4,
-                    fill: true
+                    fill: true,
+                    borderWidth: 2,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#1a237e',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
                 }, {
-                    label: 'Completed Orders',
+                    label: 'Completed',
                     data: monthlyData.map(item => item.completed_orders),
                     borderColor: '#4caf50',
                     backgroundColor: 'rgba(76, 175, 80, 0.1)',
                     tension: 0.4,
-                    fill: true
+                    fill: true,
+                    borderWidth: 2,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#4caf50',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }, {
+                    label: 'In Progress',
+                    data: monthlyData.map(item => item.in_progress_orders),
+                    borderColor: '#2196f3',
+                    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 2,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#2196f3',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }, {
+                    label: 'Pending',
+                    data: monthlyData.map(item => item.pending_orders),
+                    borderColor: '#ff9800',
+                    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 2,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#ff9800',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
                 }]
             },
             options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    title: {
-                        display: false
-                    }
-                },
+                ...commonOptions,
                 scales: {
                     y: {
                         beginAtZero: true,
+                        grid: {
+                            drawBorder: false,
+                            color: 'rgba(0, 0, 0, 0.03)'
+                        },
                         ticks: {
+                            padding: 10,
                             stepSize: 1
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            padding: 10
+                        }
+                    }
+                }
+            }
+        });
+
+        // Service Performance Chart
+        const serviceCtx = document.getElementById('serviceChart').getContext('2d');
+        const serviceData = <?= json_encode($serviceStats) ?>;
+        
+        new Chart(serviceCtx, {
+            type: 'bar',
+            data: {
+                labels: serviceData.map(item => item.service_type),
+                datasets: [{
+                    label: 'Total Orders',
+                    data: serviceData.map(item => item.total),
+                    backgroundColor: 'rgba(26, 35, 126, 0.7)',
+                    borderColor: '#1a237e',
+                    borderWidth: 1
+                }, {
+                    label: 'Completed',
+                    data: serviceData.map(item => item.completed),
+                    backgroundColor: 'rgba(76, 175, 80, 0.7)',
+                    borderColor: '#4caf50',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                ...commonOptions,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            drawBorder: false,
+                            color: 'rgba(0, 0, 0, 0.03)'
+                        },
+                        ticks: {
+                            padding: 10,
+                            stepSize: 1
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            padding: 10
                         }
                     }
                 }
