@@ -84,7 +84,9 @@ try {
         <!-- Sidebar -->
         <nav id="sidebar" class="text-white">
             <div class="sidebar-header">
-                <h3><i class="fas fa-tools me-2"></i>Job Order System</h3>
+                <div class="text-center mb-3">
+                    <img src="images/logo.png" alt="Logo" style="width: 70px; height: 70px; margin-bottom: 10px; border-radius: 50%; border: 2px solid #4A90E2; box-shadow: 0 0 10px rgba(74, 144, 226, 0.5); display: block; margin-left: auto; margin-right: auto;">
+                </div>
             </div>
 
             <ul class="list-unstyled components">
@@ -127,10 +129,24 @@ try {
                     </a>
                 </li>
                 <li>
-                    <a href="settings.php">
+                    <a href="#settingsSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
                         <i class="fas fa-cog"></i>
                         Settings
                     </a>
+                    <ul class="collapse list-unstyled" id="settingsSubmenu">
+                        <li>
+                            <a href="settings.php">
+                                <i class="fas fa-user-shield"></i>
+                                Admin Settings
+                            </a>
+                        </li>
+                        <li>
+                            <a href="aircon_models.php">
+                                <i class="fas fa-snowflake"></i>
+                                Aircon Models
+                            </a>
+                        </li>
+                    </ul>
                 </li>
             </ul>
         </nav>

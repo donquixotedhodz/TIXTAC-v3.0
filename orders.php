@@ -103,10 +103,24 @@ try {
                     </a>
                 </li>
                 <li>
-                    <a href="settings.php">
+                    <a href="#settingsSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
                         <i class="fas fa-cog"></i>
                         Settings
                     </a>
+                    <ul class="collapse list-unstyled" id="settingsSubmenu">
+                        <li>
+                            <a href="settings.php">
+                                <i class="fas fa-user-shield"></i>
+                                Admin Settings
+                            </a>
+                        </li>
+                        <li>
+                            <a href="aircon_models.php">
+                                <i class="fas fa-snowflake"></i>
+                                Aircon Models
+                            </a>
+                        </li>
+                    </ul>
                 </li>
             </ul>
         </nav>
